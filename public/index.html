@@ -64,6 +64,17 @@
           <button class="btn accent" id="loadStreamBtn">Load Stream</button>
         </div>
 
+        <!-- Drag & Drop Zone (NEW) -->
+        <div class="row">
+          <div id="dropZone" class="dropZone" aria-label="Drag and drop audio file zone">
+            <div class="dropTitle mono">Drag & Drop</div>
+            <div id="dropHint" class="dropHint">Drop MP3/WAV/OGG here</div>
+            <div class="dropSub small">
+              Offline-ready: uses <span class="mono">decodeAudioData</span> (no upload).
+            </div>
+          </div>
+        </div>
+
         <h2>Playback</h2>
         <div class="row">
           <button class="btn" id="playBtn">Play</button>
@@ -124,8 +135,6 @@
         <div id="timeline" class="timeline" aria-label="Chord Timeline"></div>
       </section>
     </main>
-
-    <audio id="player" crossorigin="anonymous"></audio>
 
     <script type="module" src="/app.js"></script>
     <script>
