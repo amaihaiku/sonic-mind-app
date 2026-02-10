@@ -38,12 +38,12 @@ module.exports = async (req, res) => {
       return res.end("No audio-only formats found");
     }
 
-    // Prefer highest bitrate
+    // Prefer highest bitrate audio-only format
     formats.sort((a, b) => (b.audioBitrate || 0) - (a.audioBitrate || 0));
     const chosen = formats[0];
 
     res.statusCode = 200;
-    // Requirement said audio/mpeg; actual codec may be webm/opus depending on YouTube.
+    // Requirement: audio/mpeg (best-effort). Actual codec may be webm/opus from YouTube.
     res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("Cache-Control", "no-store");
 
