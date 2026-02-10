@@ -1,0 +1,14 @@
+{
+  "name": "sonicmind",
+  "version": "1.0.0",
+  "description": "SonicMind - High-precision audio analyzer PWA for musicians (pure DSP, Web Audio API).",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "@distube/ytdl-core": "^4.15.0"
+  }
+}
