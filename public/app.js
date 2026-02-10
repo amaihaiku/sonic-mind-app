@@ -4,6 +4,9 @@ import { AudioEngine } from "./audio-engine.js";
 const el = (id) => document.getElementById(id);
 
 const fileInput = el("fileInput");
+const dropZone = el("dropZone");
+const dropHint = el("dropHint");
+
 const ytUrl = el("ytUrl");
 const loadStreamBtn = el("loadStreamBtn");
 
@@ -26,25 +29,25 @@ const bpmReadout = el("bpmReadout");
 
 const audioDot = el("audioDot");
 const audioStatus = el("audioStatus");
-
 const timeReadout = el("timeReadout");
 
 const specCanvas = el("spec");
 const specCtx = specCanvas.getContext("2d", { alpha: false });
+
 const timeline = el("timeline");
 
 /* -------------------------- Engine -------------------------- */
 const engine = new AudioEngine({
   fftSize: 4096,
-  smoothingTimeConstant: 0.0 // we do our own smoothing (chroma EMA + whitening), so keep analyser smoothing low
+  smoothingTimeConstant: 0.0
 });
-let rafId = null;
 
-// Capo transpose (display-only)
+let rafId = null;
 let capoSemis = 0;
 
 const PC = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
+/* -------------------------- Helpers -------------------------- */
 function fmtTime(s) {
   if (!isFinite(s)) return "00:00";
   const m = Math.floor(s / 60);
@@ -62,12 +65,6 @@ function setActiveToggle(activeId) {
   el(activeId).classList.add("active");
 }
 
-/**
- * Transpose chord text by semitones (display only).
- * Supports:
- * - Root qualities: C, Cm, Cmaj7, Cm7, C7, Cdim
- * - Optional slash bass: C/G
- */
 function transposeChordText(chord, semis) {
   if (!chord || chord === "—") return chord;
   if (semis === 0) return chord;
@@ -87,8 +84,7 @@ function transposeChordText(chord, semis) {
   let out = `${newRoot}${rest}`;
   if (slash) {
     const bassIdx = PC.indexOf(slash.trim());
-    if (bassIdx >= 0) out += `/${PC[(bassIdx + semis + 1200) % 12]}`;
-    else out += `/${slash.trim()}`;
+    out += bassIdx >= 0 ? `/${PC[(bassIdx + semis + 1200) % 12]}` : `/${slash.trim()}`;
   }
   return out;
 }
@@ -99,7 +95,6 @@ function renderTimeline() {
   engine.events.forEach((ev, idx) => {
     const div = document.createElement("div");
     div.className = "block" + (ev.overridden ? " overridden" : "");
-    div.dataset.index = String(idx);
 
     const chord = ev.overridden ? ev.userChord : ev.chord;
     const shown = transposeChordText(chord, capoSemis);
@@ -139,19 +134,16 @@ function drawSpectrogram(byteFreqData) {
   const imageData = specCtx.getImageData(1, 0, specW - 1, specH);
   specCtx.putImageData(imageData, 0, 0);
 
-  // New column
   const x = specW - 1;
   specCtx.fillStyle = "#0d0d0d";
   specCtx.fillRect(x, 0, 1, specH);
 
-  // Log-ish mapping for better low-frequency visibility
   const bins = byteFreqData.length;
   for (let y = 0; y < specH; y++) {
     const ny = 1 - y / specH;
     const idx = Math.floor(Math.pow(ny, 2.2) * (bins - 1));
     const v = byteFreqData[idx] / 255;
 
-    // Blue->Lime heat
     const b = Math.floor(60 + 195 * v);
     const g = Math.floor(10 + 245 * Math.pow(v, 1.7));
     const r = Math.floor(8 + 80 * Math.pow(v, 2.2));
@@ -161,7 +153,7 @@ function drawSpectrogram(byteFreqData) {
   }
 }
 
-/* -------------------------- Animation Loop -------------------------- */
+/* -------------------------- Main Loop -------------------------- */
 function loop() {
   const { freqData, chord, bpm } = engine.tick();
 
@@ -181,20 +173,68 @@ function loop() {
 }
 loop._lastEventCount = 0;
 
-/* -------------------------- Wiring -------------------------- */
-fileInput.addEventListener("change", async (e) => {
-  const file = e.target.files?.[0];
+/* -------------------------- Loaders -------------------------- */
+async function loadLocalFile(file) {
   if (!file) return;
-
   try {
-    await engine.setSourceFromFile(file);
-    setStatus(false, "Loaded file");
+    dropHint.textContent = `Loading: ${file.name}`;
+    const arrayBuffer = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("FileReader error"));
+      reader.onload = () => resolve(reader.result);
+      reader.readAsArrayBuffer(file);
+    });
+
+    await engine.loadFromFileArrayBuffer(arrayBuffer);
+    setStatus(false, "Loaded local file (offline)");
+    dropHint.textContent = `Ready: ${file.name}`;
   } catch (err) {
     console.error(err);
-    alert("Failed to load file.");
+    dropHint.textContent = "Drop MP3/WAV/OGG here";
+    alert("Failed to decode audio. Try another file/format.");
   }
+}
+
+/* -------------------------- Wiring: File Input -------------------------- */
+fileInput.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  await loadLocalFile(file);
 });
 
+/* -------------------------- Wiring: Drag & Drop -------------------------- */
+function setDropActive(active) {
+  dropZone.classList.toggle("active", active);
+}
+
+["dragenter", "dragover"].forEach((evt) => {
+  dropZone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDropActive(true);
+    dropHint.textContent = "Release to load file";
+  });
+});
+
+["dragleave", "dragend"].forEach((evt) => {
+  dropZone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDropActive(false);
+    dropHint.textContent = "Drop MP3/WAV/OGG here";
+  });
+});
+
+dropZone.addEventListener("drop", async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  setDropActive(false);
+
+  const file = e.dataTransfer?.files?.[0];
+  dropHint.textContent = "Drop MP3/WAV/OGG here";
+  await loadLocalFile(file);
+});
+
+/* -------------------------- Wiring: YouTube Stream -------------------------- */
 loadStreamBtn.addEventListener("click", async () => {
   const url = ytUrl.value.trim();
   if (!url) return alert("Paste a YouTube URL first.");
@@ -209,6 +249,7 @@ loadStreamBtn.addEventListener("click", async () => {
   }
 });
 
+/* -------------------------- Playback Controls -------------------------- */
 playBtn.addEventListener("click", async () => {
   try {
     await engine.play();
@@ -228,6 +269,7 @@ stopBtn.addEventListener("click", () => {
   renderTimeline();
 });
 
+/* -------------------------- Controls: Speed / Capo / EQ -------------------------- */
 speed.addEventListener("input", () => {
   const r = Number(speed.value);
   speedVal.textContent = `${r.toFixed(2)}×`;
@@ -243,15 +285,16 @@ capo.addEventListener("input", () => {
 
 for (const btn of [eqFull, eqBass, eqMid]) {
   btn.addEventListener("click", () => {
-    const mode = btn.dataset.eq;
-    engine.setFocusEQ(mode);
+    engine.setFocusEQ(btn.dataset.eq);
     setActiveToggle(btn.id);
   });
 }
 
+/* -------------------------- Boot -------------------------- */
 setStatus(false, "Idle");
 setActiveToggle("eqFull");
 speedVal.textContent = `${Number(speed.value).toFixed(2)}×`;
 capoVal.textContent = "0";
+dropHint.textContent = "Drop MP3/WAV/OGG here";
 
 rafId = requestAnimationFrame(loop);
