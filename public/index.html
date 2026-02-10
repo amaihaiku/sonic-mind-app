@@ -7,7 +7,7 @@
     <title>SonicMind</title>
 
     <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" href="/icons/icon-192.png" />
+    <link rel="icon" href="/icons/icon-512.png" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,6 +20,18 @@
   </head>
 
   <body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="overlay hidden" aria-hidden="true">
+      <div class="overlayCard">
+        <div class="pulseRing" aria-hidden="true"></div>
+        <div class="overlayTitle mono" id="loadingText">Loading…</div>
+        <div class="progress">
+          <div class="bar" id="loadingBar"></div>
+        </div>
+        <div class="overlayHint small">SonicMind is optimizing DSP for full-mix analysis.</div>
+      </div>
+    </div>
+
     <header class="topbar">
       <div class="brand">
         <div class="logo">SM</div>
@@ -34,105 +46,139 @@
           <span class="dot" id="audioDot"></span>
           <span id="audioStatus">Idle</span>
         </div>
+
         <div class="pill mono">
           <span class="label">Chord</span>
           <span id="chordReadout" class="value">—</span>
         </div>
+
         <div class="pill mono">
           <span class="label">BPM</span>
           <span id="bpmReadout" class="value">—</span>
         </div>
+
+        <div class="pill mono">
+          <span class="label">TS</span>
+          <span id="tsReadout" class="value">4/4</span>
+        </div>
       </div>
     </header>
 
-    <main class="grid">
-      <section class="panel controls">
-        <h2>Input</h2>
+    <main class="app">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebarInner">
+          <h2>Input</h2>
 
-        <div class="row">
-          <label class="field">
-            <span class="field-label">File Upload</span>
-            <input id="fileInput" type="file" accept="audio/*" />
-          </label>
-        </div>
+          <!-- Custom File Button -->
+          <div class="controlCard">
+            <div class="cardTitle">Local File (Offline)</div>
+            <div class="row compact">
+              <input id="fileInput" class="fileHidden" type="file" accept="audio/*" />
+              <button class="btn neon" id="fileBtn" type="button">Choose Audio</button>
+              <div class="fileName mono" id="fileName">No file selected</div>
+            </div>
+            <div class="small hint">
+              Decoded locally via <span class="mono">decodeAudioData</span>. No upload.
+            </div>
+          </div>
 
-        <div class="row">
-          <label class="field">
-            <span class="field-label">YouTube URL</span>
-            <input id="ytUrl" type="url" placeholder="https://www.youtube.com/watch?v=..." />
-          </label>
-          <button class="btn accent" id="loadStreamBtn">Load Stream</button>
-        </div>
+          <!-- YouTube -->
+          <div class="controlCard">
+            <div class="cardTitle">YouTube Stream</div>
+            <label class="field">
+              <span class="field-label">URL</span>
+              <input id="ytUrl" type="url" placeholder="https://www.youtube.com/watch?v=..." />
+            </label>
 
-        <!-- Drag & Drop Zone (NEW) -->
-        <div class="row">
-          <div id="dropZone" class="dropZone" aria-label="Drag and drop audio file zone">
-            <div class="dropTitle mono">Drag & Drop</div>
-            <div id="dropHint" class="dropHint">Drop MP3/WAV/OGG here</div>
-            <div class="dropSub small">
-              Offline-ready: uses <span class="mono">decodeAudioData</span> (no upload).
+            <div class="row compact">
+              <button class="btn accent" id="loadStreamBtn" type="button">Fetch Stream</button>
+            </div>
+
+            <!-- Drag & Drop Zone -->
+            <div id="dropZone" class="dropZone" aria-label="Drag and drop audio file zone">
+              <div class="dropTitle mono">Drag & Drop</div>
+              <div id="dropHint" class="dropHint">Drop MP3/WAV/OGG here</div>
+              <div class="dropSub small">Offline-ready · no upload</div>
+            </div>
+          </div>
+
+          <h2>Playback</h2>
+          <div class="controlCard">
+            <div class="row compact">
+              <button class="btn" id="playBtn" type="button">Play</button>
+              <button class="btn" id="pauseBtn" type="button">Pause</button>
+              <button class="btn danger" id="stopBtn" type="button">Stop</button>
+            </div>
+
+            <label class="field">
+              <span class="field-label">Speed</span>
+              <div class="inline">
+                <input id="speed" type="range" min="0.5" max="1" step="0.01" value="1" />
+                <span class="mono" id="speedVal">1.00×</span>
+              </div>
+            </label>
+
+            <div class="small hint">Pitch preservation is browser-dependent.</div>
+          </div>
+
+          <h2>Control</h2>
+          <div class="controlGrid">
+            <!-- Focus EQ -->
+            <div class="controlCard compactCard">
+              <div class="cardTitle">Focus EQ</div>
+              <div class="row compact">
+                <button class="btn toggle active" data-eq="full" id="eqFull" type="button">Full</button>
+                <button class="btn toggle" data-eq="bass" id="eqBass" type="button">Bass</button>
+                <button class="btn toggle" data-eq="mid" id="eqMid" type="button">Mid</button>
+              </div>
+            </div>
+
+            <!-- Capo -->
+            <div class="controlCard compactCard">
+              <div class="cardTitle">Capo</div>
+              <div class="row compact">
+                <input id="capo" type="range" min="-12" max="12" step="1" value="0" />
+                <span class="mono pillLite" id="capoVal">0</span>
+              </div>
+              <div class="small hint">Display transpose only.</div>
+            </div>
+          </div>
+
+          <div class="controlCard">
+            <div class="cardTitle">Chord Editing</div>
+            <div class="small">
+              Click a chord block to override text (e.g. <span class="mono">C</span>, <span class="mono">Am</span>,
+              <span class="mono">G7</span>, <span class="mono">C/G</span>).
             </div>
           </div>
         </div>
+      </aside>
 
-        <h2>Playback</h2>
-        <div class="row">
-          <button class="btn" id="playBtn">Play</button>
-          <button class="btn" id="pauseBtn">Pause</button>
-          <button class="btn danger" id="stopBtn">Stop</button>
-        </div>
-
-        <div class="row">
-          <label class="field">
-            <span class="field-label">Playback Speed</span>
-            <div class="inline">
-              <input id="speed" type="range" min="0.5" max="1" step="0.01" value="1" />
-              <span class="mono" id="speedVal">1.00×</span>
+      <!-- Main Visual Area -->
+      <section class="stage">
+        <div class="stageTop">
+          <div class="vizHeader">
+            <div>
+              <div class="vizTitle">Spectrogram</div>
+              <div class="small hint">Centered, fills available space. Timeline is fixed below.</div>
             </div>
-            <small class="hint">Pitch preservation is browser-dependent; default is speed change.</small>
-          </label>
+            <div class="mono small" id="timeReadout">00:00</div>
+          </div>
+
+          <div class="vizBody">
+            <canvas id="spec" width="1400" height="420" aria-label="Spectrogram"></canvas>
+          </div>
         </div>
 
-        <h2>Focus EQ</h2>
-        <div class="row">
-          <button class="btn toggle active" data-eq="full" id="eqFull">Full</button>
-          <button class="btn toggle" data-eq="bass" id="eqBass">Bass Focus</button>
-          <button class="btn toggle" data-eq="mid" id="eqMid">Mid Focus</button>
+        <!-- Fixed-height Timeline at Bottom -->
+        <div class="timelineShell">
+          <div class="timelineHeader">
+            <div class="vizTitle">Timeline</div>
+            <div class="small hint">Merged chords · blocks show duration · horizontal scroll only</div>
+          </div>
+          <div id="timeline" class="timelineGrid" aria-label="Chord Timeline"></div>
         </div>
-
-        <h2>Capo</h2>
-        <div class="row">
-          <label class="field">
-            <span class="field-label">Transpose</span>
-            <div class="inline">
-              <input id="capo" type="range" min="-12" max="12" step="1" value="0" />
-              <span class="mono" id="capoVal">0</span>
-            </div>
-            <small class="hint">Transposes displayed chord blocks only.</small>
-          </label>
-        </div>
-
-        <h2>Chord Editing</h2>
-        <p class="small">
-          Click any chord block in the timeline to override. Enter e.g. <span class="mono">C</span>,
-          <span class="mono">Am</span>, <span class="mono">G7</span>, <span class="mono">Fmaj7</span>,
-          <span class="mono">C/G</span>.
-        </p>
-      </section>
-
-      <section class="panel visuals">
-        <div class="vizHeader">
-          <h2>Spectrogram</h2>
-          <div class="mono small" id="timeReadout">00:00</div>
-        </div>
-
-        <canvas id="spec" width="1200" height="320" aria-label="Spectrogram"></canvas>
-
-        <div class="timelineHeader">
-          <h2>Timeline</h2>
-          <div class="small hint">Detected chords appear as blocks · scroll horizontally</div>
-        </div>
-        <div id="timeline" class="timeline" aria-label="Chord Timeline"></div>
       </section>
     </main>
 
