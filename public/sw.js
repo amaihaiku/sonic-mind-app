@@ -42,7 +42,6 @@ self.addEventListener("fetch", (event) => {
 
       const res = await fetch(req);
 
-      // Cache GET same-origin assets
       if (req.method === "GET" && url.origin === self.location.origin) {
         const cache = await caches.open(CACHE_NAME);
         cache.put(req, res.clone());
