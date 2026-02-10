@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#121212" />
+    <title>SonicMind</title>
+
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/icons/icon-192.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">SM</div>
+        <div>
+          <div class="title">SonicMind</div>
+          <div class="subtitle">PWA Audio Analyzer · Pure DSP</div>
+        </div>
+      </div>
+
+      <div class="status">
+        <div class="pill">
+          <span class="dot" id="audioDot"></span>
+          <span id="audioStatus">Idle</span>
+        </div>
+        <div class="pill mono">
+          <span class="label">Chord</span>
+          <span id="chordReadout" class="value">—</span>
+        </div>
+        <div class="pill mono">
+          <span class="label">BPM</span>
+          <span id="bpmReadout" class="value">—</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="panel controls">
+        <h2>Input</h2>
+
+        <div class="row">
+          <label class="field">
+            <span class="field-label">File Upload</span>
+            <input id="fileInput" type="file" accept="audio/*" />
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="field">
+            <span class="field-label">YouTube URL</span>
+            <input id="ytUrl" type="url" placeholder="https://www.youtube.com/watch?v=..." />
+          </label>
+          <button class="btn accent" id="loadStreamBtn">Load Stream</button>
+        </div>
+
+        <h2>Playback</h2>
+        <div class="row">
+          <button class="btn" id="playBtn">Play</button>
+          <button class="btn" id="pauseBtn">Pause</button>
+          <button class="btn danger" id="stopBtn">Stop</button>
+        </div>
+
+        <div class="row">
+          <label class="field">
+            <span class="field-label">Playback Speed</span>
+            <div class="inline">
+              <input id="speed" type="range" min="0.5" max="1" step="0.01" value="1" />
+              <span class="mono" id="speedVal">1.00×</span>
+            </div>
+            <small class="hint">Pitch preservation is browser-dependent; default is speed change.</small>
+          </label>
+        </div>
+
+        <h2>Focus EQ</h2>
+        <div class="row">
+          <button class="btn toggle active" data-eq="full" id="eqFull">Full</button>
+          <button class="btn toggle" data-eq="bass" id="eqBass">Bass Focus</button>
+          <button class="btn toggle" data-eq="mid" id="eqMid">Mid Focus</button>
+        </div>
+
+        <h2>Capo</h2>
+        <div class="row">
+          <label class="field">
+            <span class="field-label">Transpose</span>
+            <div class="inline">
+              <input id="capo" type="range" min="-12" max="12" step="1" value="0" />
+              <span class="mono" id="capoVal">0</span>
+            </div>
+            <small class="hint">Transposes displayed chord blocks only.</small>
+          </label>
+        </div>
+
+        <h2>Chord Editing</h2>
+        <p class="small">
+          Click any chord block in the timeline to override. Enter e.g. <span class="mono">C</span>,
+          <span class="mono">Am</span>, <span class="mono">G7</span>, <span class="mono">Fmaj7</span>,
+          <span class="mono">C/G</span>.
+        </p>
+      </section>
+
+      <section class="panel visuals">
+        <div class="vizHeader">
+          <h2>Spectrogram</h2>
+          <div class="mono small" id="timeReadout">00:00</div>
+        </div>
+
+        <canvas id="spec" width="1200" height="320" aria-label="Spectrogram"></canvas>
+
+        <div class="timelineHeader">
+          <h2>Timeline</h2>
+          <div class="small hint">Detected chords appear as blocks · scroll horizontally</div>
+        </div>
+        <div id="timeline" class="timeline" aria-label="Chord Timeline"></div>
+      </section>
+    </main>
+
+    <audio id="player" crossorigin="anonymous"></audio>
+
+    <script type="module" src="/app.js"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
+      }
+    </script>
+  </body>
+</html>
